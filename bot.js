@@ -18,6 +18,7 @@ const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 const API_URL = process.env.API_URL || "https://eagler-tiers-api.onrender.com";
+const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID; // 👈 NEW
 
 // Safety check
 if (!TOKEN || !CLIENT_ID || !GUILD_ID) {
@@ -88,6 +89,22 @@ async function registerCommands() {
 }
 
 // =========================
+// LOGGING FUNCTION
+// =========================
+
+async function logToChannel(content) {
+  if (!LOG_CHANNEL_ID) return; // No logging channel provided
+
+  try {
+    const channel = await client.channels.fetch(LOG_CHANNEL_ID);
+    if (!channel) return;
+    channel.send(content);
+  } catch (err) {
+    console.error("Failed to send log:", err);
+  }
+}
+
+// =========================
 // EVENT HANDLERS
 // =========================
 
@@ -122,17 +139,25 @@ client.on("interactionCreate", async interaction => {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        console.error("API error:", data);
         return interaction.editReply(
           `❌ Failed: ${data.error || res.statusText}`
         );
       }
 
+      // Log to Discord
+      await logToChannel(
+        `🟩 **Tier Updated**
+👤 By: <@${interaction.user.id}>
+🎮 Gamemode: **${gamemodeId}**
+📌 Player: **${player}**
+⬆️ New Tier: **${tierName}**`
+      );
+
       await interaction.editReply(
         `✅ Set **${player}** to **${tierName}** in **${gamemodeId}**`
       );
+
     } catch (err) {
-      console.error(err);
       await interaction.editReply("❌ Error talking to the API.");
     }
   }
@@ -153,23 +178,31 @@ client.on("interactionCreate", async interaction => {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        console.error("API error:", data);
         return interaction.editReply(
           `❌ Failed: ${data.error || res.statusText}`
         );
       }
 
+      // Log removal
+      await logToChannel(
+        `🟥 **Tier Removed**
+👤 By: <@${interaction.user.id}>
+🎮 Gamemode: **${gamemodeId}**
+📌 Player: **${player}**
+🗑 Removed From: **${data.removed}** tier(s)`
+      );
+
       if (data.removed > 0) {
         await interaction.editReply(
-          `✅ Removed **${player}** from **${gamemodeId}** (removed from ${data.removed} tier(s)).`
+          `✅ Removed **${player}** from **${gamemodeId}**`
         );
       } else {
         await interaction.editReply(
-          `ℹ️ **${player}** was not found in any tier for **${gamemodeId}**.`
+          `ℹ️ ${player} was not found in any tier.`
         );
       }
+
     } catch (err) {
-      console.error(err);
       await interaction.editReply("❌ Error talking to the API.");
     }
   }
