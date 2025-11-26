@@ -19,7 +19,7 @@ function saveTiers(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-// GET /tiers  -> your website will call this
+// GET /tiers  -> your website uses this
 app.get("/tiers", (req, res) => {
   try {
     const data = loadTiers();
@@ -30,7 +30,7 @@ app.get("/tiers", (req, res) => {
   }
 });
 
-// POST /setTier -> later the Discord bot will call this
+// POST /setTier -> used by Discord bot
 // body: { player, gamemodeId, tierName }
 app.post("/setTier", (req, res) => {
   const { player, gamemodeId, tierName } = req.body;
@@ -60,6 +60,36 @@ app.post("/setTier", (req, res) => {
   saveTiers(data);
 
   res.json({ success: true });
+});
+
+// POST /removeTier -> remove a player from ALL tiers in a gamemode
+// body: { player, gamemodeId }
+app.post("/removeTier", (req, res) => {
+  const { player, gamemodeId } = req.body;
+
+  if (!player || !gamemodeId) {
+    return res.status(400).json({ error: "Missing player or gamemodeId" });
+  }
+
+  const data = loadTiers();
+
+  if (!data[gamemodeId]) {
+    return res.status(400).json({ error: "Invalid gamemodeId" });
+  }
+
+  let removedCount = 0;
+
+  for (const tier of Object.keys(data[gamemodeId])) {
+    const before = data[gamemodeId][tier].length;
+    data[gamemodeId][tier] = data[gamemodeId][tier].filter(
+      (p) => p.name.toLowerCase() !== player.toLowerCase()
+    );
+    removedCount += before - data[gamemodeId][tier].length;
+  }
+
+  saveTiers(data);
+
+  res.json({ success: true, removed: removedCount });
 });
 
 const PORT = process.env.PORT || 3000;
