@@ -19,7 +19,7 @@ function saveTiers(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-// GET /tiers  -> your website uses this
+// GET /tiers  -> website uses this
 app.get("/tiers", (req, res) => {
   try {
     const data = loadTiers();
@@ -48,7 +48,7 @@ app.post("/setTier", (req, res) => {
     return res.status(400).json({ error: "Invalid tierName" });
   }
 
-  // remove player from all tiers in this gamemode
+  // remove player from ALL tiers in this gamemode
   for (const tier of Object.keys(data[gamemodeId])) {
     data[gamemodeId][tier] = data[gamemodeId][tier].filter(
       (p) => p.name.toLowerCase() !== player.toLowerCase()
@@ -62,7 +62,7 @@ app.post("/setTier", (req, res) => {
   res.json({ success: true });
 });
 
-// POST /removeTier -> remove a player from ALL tiers in a gamemode
+// POST /removeTier -> remove player from ALL tiers in a gamemode
 // body: { player, gamemodeId }
 app.post("/removeTier", (req, res) => {
   const { player, gamemodeId } = req.body;
