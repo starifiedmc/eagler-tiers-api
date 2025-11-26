@@ -363,7 +363,7 @@ client.on("interactionCreate", async interaction => {
     const tierName = interaction.options.getString("tier");
     const discordUser = interaction.options.getUser("discord_user");
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
     const moderatorTag = interaction.user.tag;
     const moderatorId = interaction.user.id;
@@ -437,7 +437,7 @@ client.on("interactionCreate", async interaction => {
     const gamemodeId = interaction.options.getString("gamemode");
     const discordUser = interaction.options.getUser("discord_user");
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
     const moderatorTag = interaction.user.tag;
     const moderatorId = interaction.user.id;
@@ -517,7 +517,7 @@ client.on("interactionCreate", async interaction => {
     const gamemodeId = interaction.options.getString("gamemode");
     const tierName = interaction.options.getString("tier");
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
     const testerTag = interaction.user.tag;
     const testerId = interaction.user.id;
