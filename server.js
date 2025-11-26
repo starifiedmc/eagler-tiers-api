@@ -31,9 +31,9 @@ app.get("/tiers", (req, res) => {
 });
 
 // POST /setTier -> used by Discord bot
-// body: { player, gamemodeId, tierName }
+// body: { player, gamemodeId, tierName, modifiedBy, modifiedById, modifiedAt }
 app.post("/setTier", (req, res) => {
-  const { player, gamemodeId, tierName } = req.body;
+  const { player, gamemodeId, tierName, modifiedBy, modifiedById, modifiedAt } = req.body;
 
   if (!player || !gamemodeId || !tierName) {
     return res.status(400).json({ error: "Missing player, gamemodeId or tierName" });
@@ -55,8 +55,14 @@ app.post("/setTier", (req, res) => {
     );
   }
 
-  // add to new tier
-  data[gamemodeId][tierName].push({ name: player });
+  // add to new tier with metadata
+  data[gamemodeId][tierName].push({
+    name: player,
+    lastModifiedBy: modifiedBy || null,
+    lastModifiedById: modifiedById || null,
+    lastModifiedAt: modifiedAt || new Date().toISOString()
+  });
+
   saveTiers(data);
 
   res.json({ success: true });
