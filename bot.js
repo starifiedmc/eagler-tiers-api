@@ -19,7 +19,8 @@ const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 const API_URL = process.env.API_URL || "https://eagler-tiers-api.onrender.com";
-const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID; // channel for logs
+const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID;       // staff log channel
+const RESULTS_CHANNEL_ID = process.env.RESULTS_CHANNEL_ID; // public test results channel
 
 if (!TOKEN || !CLIENT_ID || !GUILD_ID) {
   console.error("Missing DISCORD_TOKEN, CLIENT_ID or GUILD_ID env vars.");
@@ -72,6 +73,26 @@ const commands = [
       opt.setName("gamemode")
         .setDescription("Gamemode ID (vanilla-pvp, mace-pvp, ...)")
         .setRequired(true)
+    ),
+
+  // /result
+  new SlashCommandBuilder()
+    .setName("result")
+    .setDescription("Post a public test result for a player.")
+    .addStringOption(opt =>
+      opt.setName("player")
+        .setDescription("Player's name (IGN)")
+        .setRequired(true)
+    )
+    .addStringOption(opt =>
+      opt.setName("gamemode")
+        .setDescription("Gamemode ID (vanilla-pvp, mace-pvp, ...)")
+        .setRequired(true)
+    )
+    .addStringOption(opt =>
+      opt.setName("tier")
+        .setDescription("Tier the player achieved (HT1, LT4, etc.)")
+        .setRequired(true)
     )
 ].map(c => c.toJSON());
 
@@ -85,22 +106,21 @@ async function registerCommands() {
     Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
     { body: commands }
   );
-  console.log("✅ Registered /settier and /removetier commands");
+  console.log("✅ Registered /settier, /removetier and /result commands");
 }
 
 // =========================
 // LOGGING HELPERS
 // =========================
 
-async function logEmbed(embed) {
-  if (!LOG_CHANNEL_ID) return; // logging optional
-
+async function sendEmbedToChannel(channelId, embed) {
+  if (!channelId) return;
   try {
-    const channel = await client.channels.fetch(LOG_CHANNEL_ID);
+    const channel = await client.channels.fetch(channelId);
     if (!channel) return;
     await channel.send({ embeds: [embed] });
   } catch (err) {
-    console.error("Failed to send log:", err);
+    console.error("Failed to send embed to channel", channelId, err);
   }
 }
 
@@ -122,6 +142,9 @@ client.on("interactionCreate", async interaction => {
 
   const command = interaction.commandName;
 
+  // -------------------------
+  // /settier
+  // -------------------------
   if (command === "settier") {
     const player = interaction.options.getString("player");
     const gamemodeId = interaction.options.getString("gamemode");
@@ -131,7 +154,8 @@ client.on("interactionCreate", async interaction => {
 
     const moderatorTag = interaction.user.tag;
     const moderatorId = interaction.user.id;
-    const nowIso = new Date().toISOString();
+    const now = new Date();
+    const nowIso = now.toISOString();
 
     try {
       const res = await fetch(`${API_URL}/setTier`, {
@@ -156,7 +180,6 @@ client.on("interactionCreate", async interaction => {
         );
       }
 
-      // Log to channel with an embed
       const embed = new EmbedBuilder()
         .setColor(0x4caf50)
         .setTitle("Tier Updated")
@@ -166,9 +189,9 @@ client.on("interactionCreate", async interaction => {
           { name: "Gamemode", value: `\`${gamemodeId}\``, inline: true },
           { name: "New Tier", value: `\`${tierName}\``, inline: true }
         )
-        .setTimestamp(new Date(nowIso));
+        .setTimestamp(now);
 
-      await logEmbed(embed);
+      await sendEmbedToChannel(LOG_CHANNEL_ID, embed);
 
       await interaction.editReply(
         `✅ Set **${player}** to **${tierName}** in **${gamemodeId}**`
@@ -179,6 +202,9 @@ client.on("interactionCreate", async interaction => {
     }
   }
 
+  // -------------------------
+  // /removetier
+  // -------------------------
   if (command === "removetier") {
     const player = interaction.options.getString("player");
     const gamemodeId = interaction.options.getString("gamemode");
@@ -187,7 +213,8 @@ client.on("interactionCreate", async interaction => {
 
     const moderatorTag = interaction.user.tag;
     const moderatorId = interaction.user.id;
-    const nowIso = new Date().toISOString();
+    const now = new Date();
+    const nowIso = now.toISOString();
 
     try {
       const res = await fetch(`${API_URL}/removeTier`, {
@@ -222,9 +249,9 @@ client.on("interactionCreate", async interaction => {
           { name: "Gamemode", value: `\`${gamemodeId}\``, inline: true },
           { name: "Removed Entries", value: `\`${removed}\``, inline: true }
         )
-        .setTimestamp(new Date(nowIso));
+        .setTimestamp(now);
 
-      await logEmbed(embed);
+      await sendEmbedToChannel(LOG_CHANNEL_ID, embed);
 
       if (removed > 0) {
         await interaction.editReply(
@@ -238,6 +265,53 @@ client.on("interactionCreate", async interaction => {
     } catch (err) {
       console.error(err);
       await interaction.editReply("❌ Error talking to the API.");
+    }
+  }
+
+  // -------------------------
+  // /result  (public test result, no API changes)
+  // -------------------------
+  if (command === "result") {
+    const player = interaction.options.getString("player");
+    const gamemodeId = interaction.options.getString("gamemode");
+    const tierName = interaction.options.getString("tier");
+
+    await interaction.deferReply({ ephemeral: true });
+
+    const testerTag = interaction.user.tag;
+    const testerId = interaction.user.id;
+    const now = new Date();
+    const prettyDate = now.toLocaleString();
+
+    const embed = new EmbedBuilder()
+      .setColor(0x2196f3)
+      .setTitle("Tier Test Result")
+      .setDescription(`Manual test result submitted by <@${testerId}>`)
+      .addFields(
+        { name: "Player", value: `\`${player}\``, inline: true },
+        { name: "Gamemode", value: `\`${gamemodeId}\``, inline: true },
+        { name: "Result Tier", value: `\`${tierName}\``, inline: true },
+        { name: "Tester", value: testerTag, inline: true },
+        { name: "Date", value: prettyDate, inline: false }
+      )
+      .setTimestamp(now);
+
+    try {
+      if (!RESULTS_CHANNEL_ID) {
+        await interaction.editReply(
+          "⚠️ Results channel is not configured. Ask an admin to set `RESULTS_CHANNEL_ID`."
+        );
+        return;
+      }
+
+      await sendEmbedToChannel(RESULTS_CHANNEL_ID, embed);
+
+      await interaction.editReply(
+        `📊 Posted test result: **${player}** → **${tierName}** in **${gamemodeId}**.`
+      );
+    } catch (err) {
+      console.error(err);
+      await interaction.editReply("❌ Failed to post result.");
     }
   }
 });
