@@ -1,7 +1,18 @@
 // bot.js - Discord bot for updating Eagler tiers
 
-import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } from "discord.js";
+import express from "express";
+import {
+  Client,
+  GatewayIntentBits,
+  REST,
+  Routes,
+  SlashCommandBuilder
+} from "discord.js";
 import fetch from "node-fetch";
+
+// =========================
+// ENV VARS
+// =========================
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -14,13 +25,20 @@ if (!TOKEN || !CLIENT_ID || !GUILD_ID) {
   process.exit(1);
 }
 
-// Create Discord client
+// =========================
+// DISCORD CLIENT
+// =========================
+
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
-// Define slash commands
+// =========================
+// SLASH COMMAND DEFINITIONS
+// =========================
+
 const commands = [
+  // /settier
   new SlashCommandBuilder()
     .setName("settier")
     .setDescription("Set a player's tier in a specific gamemode.")
@@ -40,6 +58,7 @@ const commands = [
         .setRequired(true)
     ),
 
+  // /removetier
   new SlashCommandBuilder()
     .setName("removetier")
     .setDescription("Remove a player from all tiers in a gamemode.")
@@ -55,7 +74,10 @@ const commands = [
     )
 ].map(c => c.toJSON());
 
-// Register commands in your guild
+// =========================
+// REGISTER COMMANDS
+// =========================
+
 async function registerCommands() {
   const rest = new REST({ version: "10" }).setToken(TOKEN);
   await rest.put(
@@ -64,6 +86,10 @@ async function registerCommands() {
   );
   console.log("✅ Registered /settier and /removetier commands");
 }
+
+// =========================
+// EVENT HANDLERS
+// =========================
 
 client.on("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
@@ -74,7 +100,6 @@ client.on("ready", async () => {
   }
 });
 
-// Handle slash commands
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -110,8 +135,9 @@ client.on("interactionCreate", async interaction => {
       console.error(err);
       await interaction.editReply("❌ Error talking to the API.");
     }
+  }
 
-  } else if (command === "removetier") {
+  if (command === "removetier") {
     const player = interaction.options.getString("player");
     const gamemodeId = interaction.options.getString("gamemode");
 
@@ -148,5 +174,23 @@ client.on("interactionCreate", async interaction => {
     }
   }
 });
+
+// =========================
+// TINY WEB SERVER FOR RENDER
+// =========================
+
+const pingApp = express();
+pingApp.get("/", (req, res) => {
+  res.send("EaglerTiers bot is running");
+});
+
+const PORT = process.env.PORT || 3000;
+pingApp.listen(PORT, () => {
+  console.log("Bot web server listening on port " + PORT);
+});
+
+// =========================
+// LOGIN
+// =========================
 
 client.login(TOKEN);
