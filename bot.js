@@ -164,8 +164,8 @@ function getTierRoleId(gamemodeId, tierName) {
 
 // 👇 PUT YOUR STAFF ROLE IDS HERE
 const STAFF_ROLE_IDS = [
-  "REPLACE_WITH_STAFF_ROLE_ID_1",
-  "REPLACE_WITH_STAFF_ROLE_ID_2"
+  "1348444228811755621",
+  "1348444272302755931"
 ];
 
 function userHasPermission(interaction) {
