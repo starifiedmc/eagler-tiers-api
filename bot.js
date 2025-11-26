@@ -286,7 +286,7 @@ client.on("interactionCreate", async interaction => {
     const embed = new EmbedBuilder()
       .setColor(0x2196f3)
       .setTitle("Tier Test Result")
-      .setDescription(`Manual test result submitted by <@${testerId}>`)
+      .setDescription(`Test result submitted by <@${testerId}>`)
       .addFields(
         { name: "Player", value: `\`${player}\``, inline: true },
         { name: "Gamemode", value: `\`${gamemodeId}\``, inline: true },
