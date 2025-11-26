@@ -19,7 +19,7 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
-// Define the /settier command
+// Define the slash commands
 const commands = [
   new SlashCommandBuilder()
     .setName("settier")
@@ -38,17 +38,31 @@ const commands = [
       opt.setName("tier")
         .setDescription("Tier (HT1, LT1, ... HT5, LT5)")
         .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("removetier")
+    .setDescription("Remove a player from all tiers in a gamemode.")
+    .addStringOption(opt =>
+      opt.setName("player")
+        .setDescription("Player's name (IGN)")
+        .setRequired(true)
+    )
+    .addStringOption(opt =>
+      opt.setName("gamemode")
+        .setDescription("Gamemode ID (vanilla-pvp, mace-pvp, ...)")
+        .setRequired(true)
     )
 ].map(c => c.toJSON());
 
-// Register slash commands in your test guild
+// Register slash commands in your guild
 async function registerCommands() {
   const rest = new REST({ version: "10" }).setToken(TOKEN);
   await rest.put(
     Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
     { body: commands }
   );
-  console.log("✅ Registered /settier command");
+  console.log("✅ Registered /settier and /removetier commands");
 }
 
 client.on("ready", async () => {
@@ -63,36 +77,75 @@ client.on("ready", async () => {
 // Handle slash commands
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
-  if (interaction.commandName !== "settier") return;
 
-  const player = interaction.options.getString("player");
-  const gamemodeId = interaction.options.getString("gamemode");
-  const tierName = interaction.options.getString("tier");
+  const name = interaction.commandName;
 
-  await interaction.deferReply({ ephemeral: true });
+  if (name === "settier") {
+    const player = interaction.options.getString("player");
+    const gamemodeId = interaction.options.getString("gamemode");
+    const tierName = interaction.options.getString("tier");
 
-  try {
-    const res = await fetch(`${API_URL}/setTier`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ player, gamemodeId, tierName })
-    });
+    await interaction.deferReply({ ephemeral: true });
 
-    const data = await res.json().catch(() => ({}));
+    try {
+      const res = await fetch(`${API_URL}/setTier`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player, gamemodeId, tierName })
+      });
 
-    if (!res.ok) {
-      console.error("API error:", data);
-      return interaction.editReply(
-        `❌ Failed: ${data.error || res.statusText}`
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        console.error("API error:", data);
+        return interaction.editReply(
+          `❌ Failed: ${data.error || res.statusText}`
+        );
+      }
+
+      await interaction.editReply(
+        `✅ Set **${player}** to **${tierName}** in **${gamemodeId}**`
       );
+    } catch (err) {
+      console.error(err);
+      await interaction.editReply("❌ Error talking to the API.");
     }
 
-    await interaction.editReply(
-      `✅ Set **${player}** to **${tierName}** in **${gamemodeId}**`
-    );
-  } catch (err) {
-    console.error(err);
-    await interaction.editReply("❌ Error talking to the API.");
+  } else if (name === "removetier") {
+    const player = interaction.options.getString("player");
+    const gamemodeId = interaction.options.getString("gamemode");
+
+    await interaction.deferReply({ ephemeral: true });
+
+    try {
+      const res = await fetch(`${API_URL}/removeTier`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player, gamemodeId })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        console.error("API error:", data);
+        return interaction.editReply(
+          `❌ Failed: ${data.error || res.statusText}`
+        );
+      }
+
+      if (data.removed > 0) {
+        await interaction.editReply(
+          `✅ Removed **${player}** from **${gamemodeId}** (removed from ${data.removed} tier(s)).`
+        );
+      } else {
+        await interaction.editReply(
+          `ℹ️ **${player}** was not found in any tier for **${gamemodeId}**.`
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      await interaction.editReply("❌ Error talking to the API.");
+    }
   }
 });
 
