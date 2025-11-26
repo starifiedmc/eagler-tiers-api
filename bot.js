@@ -20,8 +20,8 @@ const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 const API_URL = process.env.API_URL || "https://eagler-tiers-api.onrender.com";
-const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID;         // staff log channel
-const RESULTS_CHANNEL_ID = process.env.RESULTS_CHANNEL_ID; // public results channel
+const LOG_CHANNEL_ID = process.env.1443083985898049599;         // staff log channel
+const RESULTS_CHANNEL_ID = process.env.1348582624930693140; // public results channel
 
 if (!TOKEN || !CLIENT_ID || !GUILD_ID) {
   console.error("Missing DISCORD_TOKEN, CLIENT_ID or GUILD_ID env vars.");
