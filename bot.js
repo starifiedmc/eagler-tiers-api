@@ -29,14 +29,143 @@ if (!TOKEN || !CLIENT_ID || !GUILD_ID) {
 }
 
 // =========================
+// ROLE MAPPING CONFIG
+// =========================
+
+// 👇 Fill these with your real Discord role IDs
+const ROLE_MAP = {
+  "vanilla-pvp": {
+    HT1: "1443099326636359690",
+    LT1: "1443108701912436870",
+    HT2: "1443102932555006013",
+    LT2: "1443107817530851348",
+    HT3: "1443102958911881256",
+    LT3: "1443106574368247870",
+    HT4: "1443103998050832384",
+    LT4: "1443105840369373184",
+    HT5: "1443104855106392105",
+    LT5: "1443105376521158688"
+  },
+  "mace-pvp": {
+    HT1: "1443099999167582223",
+    LT1: "1443108709440950422",
+    HT2: "1443102953186791454",
+    LT2: "1443107803295252502",
+    HT3: "1443103927678799914",
+    LT3: "1443106590654988505",
+    HT4: "1443104412485812347",
+    LT4: "1443105826075050076",
+    HT5: "1443104884126781480",
+    LT5: "1443105411459977236"
+  },
+  "axe-pvp": {
+    HT1: "1443099964719763527",
+    LT1: "1443108706127581235",
+    HT2: "1443102950397448192",
+    LT2: "1443107819581608007",
+    HT3: "1443103925720055859",
+    LT3: "1443106550246932540",
+    HT4: "1443104410065571880",
+    LT4: "1443105844953878681",
+    HT5: "1443104881056415774",
+    LT5: "1443105407307485195"
+  },
+  "sword-pvp": {
+    HT1: "1443099917575782411",
+    LT1: "1443108711219597312",
+    HT2: "1443102947402580112",
+    LT2: "1443107807783157811",
+    HT3: "1443103923337429032",
+    LT3: "1443106585298600027",
+    HT4: "1443104407591063562",
+    LT4: "1443105835554312282",
+    HT5: "1443104878242168873",
+    LT5: "1443105403641663749"
+  },
+  "smp": {
+    HT1: "1443099794938658929",
+    LT1: "1443108708199567360",
+    HT2: "1443102944235880635",
+    LT2: "1443107806302572654",
+    HT3: "1443103921022308373",
+    LT3: "1443106587098218567",
+    HT4: "1443104399898443826",
+    LT4: "1443105828709208197",
+    HT5: "1443104875645763667",
+    LT5: "1443105400806440960"
+  },
+  "diamond-smp": {
+    HT1: "1443100000274878495",
+    LT1: "1443023475592658954",
+    HT2: "1443102955732467815",
+    LT2: "1443107810366980187",
+    HT3: "1443103931117994026",
+    LT3: "1443106595004485632",
+    HT4: "1443104427652415508",
+    LT4: "1443105842479239230",
+    HT5: "1443104887859707904",
+    LT5: "1443105413678633044"
+  },
+  "uhc": {
+    HT1: "1443099402498605086",
+    LT1: "1443108713287258222",
+    HT2: "1443102936036282408",
+    LT2: "1443107813797920930",
+    HT3: "1443103911996162128",
+    LT3: "1443106593699921950",
+    HT4: "1443104391254245507",
+    LT4: "1443105831003619402",
+    HT5: "1443104858369687603",
+    LT5: "1443105388894617753"
+  },
+  "pot-pvp": {
+    HT1: "1443099487383064606",
+    LT1: "1443108703606935562",
+    HT2: "1443102938326106183",
+    LT2: "1443107840339349606",
+    HT3: "1443103916177883249",
+    LT3: "1443106589190914180",
+    HT4: "1443104394290659400",
+    LT4: "1443105837769035777",
+    HT5: "1443104860659519488",
+    LT5: "1443105393885708358"
+  },
+  "neth-op": {
+    HT1: "1443099704132112384",
+    LT1: "1443108734909026415",
+    HT2: "1443102941144809484",
+    LT2: "1443107836514009098",
+    HT3: "1443103918685945877",
+    LT3: "1443106629011771475",
+    HT4: "1443104397004374066",
+    LT4: "1443105834694348914",
+    HT5: "1443104863541137530",
+    LT5: "1443105396704149584"
+  }
+};
+
+// Helper: get all tier role IDs for a given gamemode
+function getGamemodeRoleIds(gamemodeId) {
+  const gm = ROLE_MAP[gamemodeId];
+  if (!gm) return [];
+  return Object.values(gm);
+}
+
+// Helper: get the specific role ID for gamemode + tier
+function getTierRoleId(gamemodeId, tierName) {
+  const gm = ROLE_MAP[gamemodeId];
+  if (!gm) return null;
+  return gm[tierName] || null;
+}
+
+// =========================
 // PERMISSIONS
 // =========================
 
 // 👇 PUT YOUR STAFF ROLE IDS HERE
-// Example: ["123456789012345678", "987654321098765432"]
 const STAFF_ROLE_IDS = [
-  "1348444272302755931",
-  "1348444228811755621"
+  "REPLACE_WITH_STAFF_ROLE_ID_1",
+  "REPLACE_WITH_STAFF_ROLE_ID_2"
 ];
 
 function userHasPermission(interaction) {
@@ -45,11 +174,9 @@ function userHasPermission(interaction) {
     return true;
   }
 
-  // If we don't have member/roles cache, deny
   const roles = interaction.member?.roles;
   if (!roles || !roles.cache) return false;
 
-  // Must have at least one of the staff roles
   return STAFF_ROLE_IDS.some(id => roles.cache.has(id));
 }
 
@@ -58,7 +185,7 @@ function userHasPermission(interaction) {
 // =========================
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
 });
 
 // =========================
@@ -84,6 +211,11 @@ const commands = [
       opt.setName("tier")
         .setDescription("Tier (HT1, LT1, ... HT5, LT5)")
         .setRequired(true)
+    )
+    .addUserOption(opt =>
+      opt.setName("discord_user")
+        .setDescription("Discord user to assign roles to")
+        .setRequired(true)
     ),
 
   // /removetier
@@ -99,9 +231,14 @@ const commands = [
       opt.setName("gamemode")
         .setDescription("Gamemode ID (vanilla-pvp, mace-pvp, etc.)")
         .setRequired(true)
+    )
+    .addUserOption(opt =>
+      opt.setName("discord_user")
+        .setDescription("Discord user to remove tier roles from")
+        .setRequired(true)
     ),
 
-  // /result (public test result log)
+  // /result
   new SlashCommandBuilder()
     .setName("result")
     .setDescription("Post a public test result for a player.")
@@ -123,7 +260,7 @@ const commands = [
 ].map(c => c.toJSON());
 
 // =========================
-– REGISTER COMMANDS
+// REGISTER COMMANDS
 // =========================
 
 async function registerCommands() {
@@ -151,7 +288,48 @@ async function sendEmbedToChannel(channelId, embed) {
 }
 
 // =========================
-– EVENTS
+// ROLE APPLY HELPERS
+// =========================
+
+async function applyTierRoles(member, gamemodeId, tierName) {
+  const allRoleIds = getGamemodeRoleIds(gamemodeId);
+  if (allRoleIds.length === 0) return; // no config for this gamemode
+
+  const targetRoleId = getTierRoleId(gamemodeId, tierName);
+  if (!targetRoleId) return; // no specific role for this tier
+
+  try {
+    // Remove all tier roles for this gamemode except the one we're setting
+    const rolesToRemove = allRoleIds.filter(id => id !== targetRoleId && member.roles.cache.has(id));
+    if (rolesToRemove.length > 0) {
+      await member.roles.remove(rolesToRemove);
+    }
+
+    // Add the new tier role if they don't have it
+    if (!member.roles.cache.has(targetRoleId)) {
+      await member.roles.add(targetRoleId);
+    }
+  } catch (err) {
+    console.error(`Failed to update roles for ${member.user.tag}`, err);
+  }
+}
+
+async function clearTierRoles(member, gamemodeId) {
+  const allRoleIds = getGamemodeRoleIds(gamemodeId);
+  if (allRoleIds.length === 0) return;
+
+  try {
+    const rolesToRemove = allRoleIds.filter(id => member.roles.cache.has(id));
+    if (rolesToRemove.length > 0) {
+      await member.roles.remove(rolesToRemove);
+    }
+  } catch (err) {
+    console.error(`Failed to clear roles for ${member.user.tag}`, err);
+  }
+}
+
+// =========================
+// EVENTS
 // =========================
 
 client.on("ready", async () => {
@@ -166,7 +344,7 @@ client.on("ready", async () => {
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
-  // 🔐 PERMISSION GATE
+  // Permissions gate
   if (!userHasPermission(interaction)) {
     return interaction.reply({
       content: "❌ You do not have permission to use this command.",
@@ -183,6 +361,7 @@ client.on("interactionCreate", async interaction => {
     const player = interaction.options.getString("player");
     const gamemodeId = interaction.options.getString("gamemode");
     const tierName = interaction.options.getString("tier");
+    const discordUser = interaction.options.getUser("discord_user");
 
     await interaction.deferReply({ ephemeral: true });
 
@@ -190,6 +369,14 @@ client.on("interactionCreate", async interaction => {
     const moderatorId = interaction.user.id;
     const now = new Date();
     const nowIso = now.toISOString();
+
+    // Fetch member for role updates
+    let member = null;
+    try {
+      member = await interaction.guild.members.fetch(discordUser.id);
+    } catch {
+      // ignore, will just skip role part if we can't find member
+    }
 
     try {
       const res = await fetch(`${API_URL}/setTier`, {
@@ -214,12 +401,18 @@ client.on("interactionCreate", async interaction => {
         );
       }
 
+      // Apply Discord roles if we have the member & config
+      if (member) {
+        await applyTierRoles(member, gamemodeId, tierName);
+      }
+
       const embed = new EmbedBuilder()
         .setColor(0x4caf50)
         .setTitle("Tier Updated")
         .addFields(
           { name: "Moderator", value: `<@${moderatorId}>`, inline: true },
-          { name: "Player", value: `\`${player}\``, inline: true },
+          { name: "Player (IGN)", value: `\`${player}\``, inline: true },
+          { name: "Discord User", value: `<@${discordUser.id}>`, inline: true },
           { name: "Gamemode", value: `\`${gamemodeId}\``, inline: true },
           { name: "New Tier", value: `\`${tierName}\``, inline: true }
         )
@@ -228,11 +421,11 @@ client.on("interactionCreate", async interaction => {
       await sendEmbedToChannel(LOG_CHANNEL_ID, embed);
 
       await interaction.editReply(
-        `✅ Set **${player}** to **${tierName}** in **${gamemodeId}**`
+        `✅ Set **${player}** to **${tierName}** in **${gamemodeId}** for <@${discordUser.id}>`
       );
     } catch (err) {
       console.error(err);
-      await interaction.editReply("❌ Error talking to the API.");
+      await interaction.editReply("❌ Error talking to the API or updating roles.");
     }
   }
 
@@ -242,6 +435,7 @@ client.on("interactionCreate", async interaction => {
   if (command === "removetier") {
     const player = interaction.options.getString("player");
     const gamemodeId = interaction.options.getString("gamemode");
+    const discordUser = interaction.options.getUser("discord_user");
 
     await interaction.deferReply({ ephemeral: true });
 
@@ -249,6 +443,13 @@ client.on("interactionCreate", async interaction => {
     const moderatorId = interaction.user.id;
     const now = new Date();
     const nowIso = now.toISOString();
+
+    let member = null;
+    try {
+      member = await interaction.guild.members.fetch(discordUser.id);
+    } catch {
+      // ignore
+    }
 
     try {
       const res = await fetch(`${API_URL}/removeTier`, {
@@ -274,12 +475,18 @@ client.on("interactionCreate", async interaction => {
 
       const removed = data.removed || 0;
 
+      // Clear gamemode tier roles from the member
+      if (member) {
+        await clearTierRoles(member, gamemodeId);
+      }
+
       const embed = new EmbedBuilder()
         .setColor(0xf44336)
         .setTitle("Tier Removed")
         .addFields(
           { name: "Moderator", value: `<@${moderatorId}>`, inline: true },
-          { name: "Player", value: `\`${player}\``, inline: true },
+          { name: "Player (IGN)", value: `\`${player}\``, inline: true },
+          { name: "Discord User", value: `<@${discordUser.id}>`, inline: true },
           { name: "Gamemode", value: `\`${gamemodeId}\``, inline: true },
           { name: "Removed Entries", value: `\`${removed}\``, inline: true }
         )
@@ -289,16 +496,16 @@ client.on("interactionCreate", async interaction => {
 
       if (removed > 0) {
         await interaction.editReply(
-          `✅ Removed **${player}** from **${gamemodeId}** (${removed} tier(s)).`
+          `✅ Removed **${player}** from **${gamemodeId}** and cleared tier roles for <@${discordUser.id}>.`
         );
       } else {
         await interaction.editReply(
-          `ℹ️ **${player}** was not found in any tier for **${gamemodeId}**.`
+          `ℹ️ **${player}** was not found in any tier for **${gamemodeId}**, but tier roles were cleared for <@${discordUser.id}>.`
         );
       }
     } catch (err) {
       console.error(err);
-      await interaction.editReply("❌ Error talking to the API.");
+      await interaction.editReply("❌ Error talking to the API or updating roles.");
     }
   }
 
@@ -333,7 +540,7 @@ client.on("interactionCreate", async interaction => {
     try {
       if (!RESULTS_CHANNEL_ID) {
         await interaction.editReply(
-          "⚠️ Results channel is not configured. Ask an admin to set `RESULTS_CHANNEL_ID` in the bot's environment."
+          "⚠️ Results channel is not configured. Ask an admin to set `RESULTS_CHANNEL_ID`."
         );
         return;
       }
@@ -351,7 +558,7 @@ client.on("interactionCreate", async interaction => {
 });
 
 // =========================
-// LITTLE WEB SERVER FOR RENDER
+// RENDER PING SERVER
 // =========================
 
 const pingApp = express();
