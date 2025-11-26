@@ -19,7 +19,7 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
-// Define the slash commands
+// Define slash commands
 const commands = [
   new SlashCommandBuilder()
     .setName("settier")
@@ -55,7 +55,7 @@ const commands = [
     )
 ].map(c => c.toJSON());
 
-// Register slash commands in your guild
+// Register commands in your guild
 async function registerCommands() {
   const rest = new REST({ version: "10" }).setToken(TOKEN);
   await rest.put(
@@ -78,9 +78,9 @@ client.on("ready", async () => {
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
-  const name = interaction.commandName;
+  const command = interaction.commandName;
 
-  if (name === "settier") {
+  if (command === "settier") {
     const player = interaction.options.getString("player");
     const gamemodeId = interaction.options.getString("gamemode");
     const tierName = interaction.options.getString("tier");
@@ -111,7 +111,7 @@ client.on("interactionCreate", async interaction => {
       await interaction.editReply("❌ Error talking to the API.");
     }
 
-  } else if (name === "removetier") {
+  } else if (command === "removetier") {
     const player = interaction.options.getString("player");
     const gamemodeId = interaction.options.getString("gamemode");
 
