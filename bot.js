@@ -6,7 +6,8 @@ import {
   GatewayIntentBits,
   REST,
   Routes,
-  SlashCommandBuilder
+  SlashCommandBuilder,
+  EmbedBuilder
 } from "discord.js";
 import fetch from "node-fetch";
 
@@ -18,9 +19,8 @@ const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 const API_URL = process.env.API_URL || "https://eagler-tiers-api.onrender.com";
-const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID; // 👈 NEW
+const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID; // channel for logs
 
-// Safety check
 if (!TOKEN || !CLIENT_ID || !GUILD_ID) {
   console.error("Missing DISCORD_TOKEN, CLIENT_ID or GUILD_ID env vars.");
   process.exit(1);
@@ -35,7 +35,7 @@ const client = new Client({
 });
 
 // =========================
-// SLASH COMMAND DEFINITIONS
+// SLASH COMMANDS
 // =========================
 
 const commands = [
@@ -89,23 +89,23 @@ async function registerCommands() {
 }
 
 // =========================
-// LOGGING FUNCTION
+// LOGGING HELPERS
 // =========================
 
-async function logToChannel(content) {
-  if (!LOG_CHANNEL_ID) return; // No logging channel provided
+async function logEmbed(embed) {
+  if (!LOG_CHANNEL_ID) return; // logging optional
 
   try {
     const channel = await client.channels.fetch(LOG_CHANNEL_ID);
     if (!channel) return;
-    channel.send(content);
+    await channel.send({ embeds: [embed] });
   } catch (err) {
     console.error("Failed to send log:", err);
   }
 }
 
 // =========================
-// EVENT HANDLERS
+// EVENTS
 // =========================
 
 client.on("ready", async () => {
@@ -129,35 +129,52 @@ client.on("interactionCreate", async interaction => {
 
     await interaction.deferReply({ ephemeral: true });
 
+    const moderatorTag = interaction.user.tag;
+    const moderatorId = interaction.user.id;
+    const nowIso = new Date().toISOString();
+
     try {
       const res = await fetch(`${API_URL}/setTier`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ player, gamemodeId, tierName })
+        body: JSON.stringify({
+          player,
+          gamemodeId,
+          tierName,
+          modifiedBy: moderatorTag,
+          modifiedById: moderatorId,
+          modifiedAt: nowIso
+        })
       });
 
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        console.error("API error:", data);
         return interaction.editReply(
           `❌ Failed: ${data.error || res.statusText}`
         );
       }
 
-      // Log to Discord
-      await logToChannel(
-        `🟩 **Tier Updated**
-👤 By: <@${interaction.user.id}>
-🎮 Gamemode: **${gamemodeId}**
-📌 Player: **${player}**
-⬆️ New Tier: **${tierName}**`
-      );
+      // Log to channel with an embed
+      const embed = new EmbedBuilder()
+        .setColor(0x4caf50)
+        .setTitle("Tier Updated")
+        .addFields(
+          { name: "Moderator", value: `<@${moderatorId}>`, inline: true },
+          { name: "Player", value: `\`${player}\``, inline: true },
+          { name: "Gamemode", value: `\`${gamemodeId}\``, inline: true },
+          { name: "New Tier", value: `\`${tierName}\``, inline: true }
+        )
+        .setTimestamp(new Date(nowIso));
+
+      await logEmbed(embed);
 
       await interaction.editReply(
         `✅ Set **${player}** to **${tierName}** in **${gamemodeId}**`
       );
-
     } catch (err) {
+      console.error(err);
       await interaction.editReply("❌ Error talking to the API.");
     }
   }
@@ -168,41 +185,58 @@ client.on("interactionCreate", async interaction => {
 
     await interaction.deferReply({ ephemeral: true });
 
+    const moderatorTag = interaction.user.tag;
+    const moderatorId = interaction.user.id;
+    const nowIso = new Date().toISOString();
+
     try {
       const res = await fetch(`${API_URL}/removeTier`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ player, gamemodeId })
+        body: JSON.stringify({
+          player,
+          gamemodeId,
+          modifiedBy: moderatorTag,
+          modifiedById: moderatorId,
+          modifiedAt: nowIso
+        })
       });
 
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        console.error("API error:", data);
         return interaction.editReply(
           `❌ Failed: ${data.error || res.statusText}`
         );
       }
 
-      // Log removal
-      await logToChannel(
-        `🟥 **Tier Removed**
-👤 By: <@${interaction.user.id}>
-🎮 Gamemode: **${gamemodeId}**
-📌 Player: **${player}**
-🗑 Removed From: **${data.removed}** tier(s)`
-      );
+      const removed = data.removed || 0;
 
-      if (data.removed > 0) {
+      const embed = new EmbedBuilder()
+        .setColor(0xf44336)
+        .setTitle("Tier Removed")
+        .addFields(
+          { name: "Moderator", value: `<@${moderatorId}>`, inline: true },
+          { name: "Player", value: `\`${player}\``, inline: true },
+          { name: "Gamemode", value: `\`${gamemodeId}\``, inline: true },
+          { name: "Removed Entries", value: `\`${removed}\``, inline: true }
+        )
+        .setTimestamp(new Date(nowIso));
+
+      await logEmbed(embed);
+
+      if (removed > 0) {
         await interaction.editReply(
-          `✅ Removed **${player}** from **${gamemodeId}**`
+          `✅ Removed **${player}** from **${gamemodeId}** (${removed} tier(s)).`
         );
       } else {
         await interaction.editReply(
-          `ℹ️ ${player} was not found in any tier.`
+          `ℹ️ **${player}** was not found in any tier for **${gamemodeId}**.`
         );
       }
-
     } catch (err) {
+      console.error(err);
       await interaction.editReply("❌ Error talking to the API.");
     }
   }
