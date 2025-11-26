@@ -1,4 +1,4 @@
-// bot.js - Discord bot for updating Eagler tiers
+// bot.js - Discord bot for Eagler tiers
 
 import express from "express";
 import {
@@ -7,7 +7,8 @@ import {
   REST,
   Routes,
   SlashCommandBuilder,
-  EmbedBuilder
+  EmbedBuilder,
+  PermissionFlagsBits
 } from "discord.js";
 import fetch from "node-fetch";
 
@@ -19,12 +20,37 @@ const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 const API_URL = process.env.API_URL || "https://eagler-tiers-api.onrender.com";
-const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID;       // staff log channel
-const RESULTS_CHANNEL_ID = process.env.RESULTS_CHANNEL_ID; // public test results channel
+const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID;         // staff log channel
+const RESULTS_CHANNEL_ID = process.env.RESULTS_CHANNEL_ID; // public results channel
 
 if (!TOKEN || !CLIENT_ID || !GUILD_ID) {
   console.error("Missing DISCORD_TOKEN, CLIENT_ID or GUILD_ID env vars.");
   process.exit(1);
+}
+
+// =========================
+// PERMISSIONS
+// =========================
+
+// 👇 PUT YOUR STAFF ROLE IDS HERE
+// Example: ["123456789012345678", "987654321098765432"]
+const STAFF_ROLE_IDS = [
+  "REPLACE_THIS_WITH_ROLE_ID_1",
+  "REPLACE_THIS_WITH_ROLE_ID_2"
+];
+
+function userHasPermission(interaction) {
+  // Admins always allowed
+  if (interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+    return true;
+  }
+
+  // If we don't have member/roles cache, deny
+  const roles = interaction.member?.roles;
+  if (!roles || !roles.cache) return false;
+
+  // Must have at least one of the staff roles
+  return STAFF_ROLE_IDS.some(id => roles.cache.has(id));
 }
 
 // =========================
@@ -46,12 +72,12 @@ const commands = [
     .setDescription("Set a player's tier in a specific gamemode.")
     .addStringOption(opt =>
       opt.setName("player")
-        .setDescription("Player's name (IGN)")
+        .setDescription("Player's Minecraft IGN")
         .setRequired(true)
     )
     .addStringOption(opt =>
       opt.setName("gamemode")
-        .setDescription("Gamemode ID (vanilla-pvp, mace-pvp, ...)")
+        .setDescription("Gamemode ID (vanilla-pvp, mace-pvp, etc.)")
         .setRequired(true)
     )
     .addStringOption(opt =>
@@ -66,27 +92,27 @@ const commands = [
     .setDescription("Remove a player from all tiers in a gamemode.")
     .addStringOption(opt =>
       opt.setName("player")
-        .setDescription("Player's name (IGN)")
+        .setDescription("Player's Minecraft IGN")
         .setRequired(true)
     )
     .addStringOption(opt =>
       opt.setName("gamemode")
-        .setDescription("Gamemode ID (vanilla-pvp, mace-pvp, ...)")
+        .setDescription("Gamemode ID (vanilla-pvp, mace-pvp, etc.)")
         .setRequired(true)
     ),
 
-  // /result
+  // /result (public test result log)
   new SlashCommandBuilder()
     .setName("result")
     .setDescription("Post a public test result for a player.")
     .addStringOption(opt =>
       opt.setName("player")
-        .setDescription("Player's name (IGN)")
+        .setDescription("Player's Minecraft IGN")
         .setRequired(true)
     )
     .addStringOption(opt =>
       opt.setName("gamemode")
-        .setDescription("Gamemode ID (vanilla-pvp, mace-pvp, ...)")
+        .setDescription("Gamemode ID (vanilla-pvp, mace-pvp, etc.)")
         .setRequired(true)
     )
     .addStringOption(opt =>
@@ -97,7 +123,7 @@ const commands = [
 ].map(c => c.toJSON());
 
 // =========================
-// REGISTER COMMANDS
+– REGISTER COMMANDS
 // =========================
 
 async function registerCommands() {
@@ -110,7 +136,7 @@ async function registerCommands() {
 }
 
 // =========================
-// LOGGING HELPERS
+// LOG HELPERS
 // =========================
 
 async function sendEmbedToChannel(channelId, embed) {
@@ -125,7 +151,7 @@ async function sendEmbedToChannel(channelId, embed) {
 }
 
 // =========================
-// EVENTS
+– EVENTS
 // =========================
 
 client.on("ready", async () => {
@@ -139,6 +165,14 @@ client.on("ready", async () => {
 
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
+
+  // 🔐 PERMISSION GATE
+  if (!userHasPermission(interaction)) {
+    return interaction.reply({
+      content: "❌ You do not have permission to use this command.",
+      ephemeral: true
+    });
+  }
 
   const command = interaction.commandName;
 
@@ -269,7 +303,7 @@ client.on("interactionCreate", async interaction => {
   }
 
   // -------------------------
-  // /result  (public test result, no API changes)
+  // /result
   // -------------------------
   if (command === "result") {
     const player = interaction.options.getString("player");
@@ -286,7 +320,7 @@ client.on("interactionCreate", async interaction => {
     const embed = new EmbedBuilder()
       .setColor(0x2196f3)
       .setTitle("Tier Test Result")
-      .setDescription(`Test result submitted by <@${testerId}>`)
+      .setDescription(`Manual test result submitted by <@${testerId}>`)
       .addFields(
         { name: "Player", value: `\`${player}\``, inline: true },
         { name: "Gamemode", value: `\`${gamemodeId}\``, inline: true },
@@ -299,7 +333,7 @@ client.on("interactionCreate", async interaction => {
     try {
       if (!RESULTS_CHANNEL_ID) {
         await interaction.editReply(
-          "⚠️ Results channel is not configured. Ask an admin to set `RESULTS_CHANNEL_ID`."
+          "⚠️ Results channel is not configured. Ask an admin to set `RESULTS_CHANNEL_ID` in the bot's environment."
         );
         return;
       }
@@ -317,7 +351,7 @@ client.on("interactionCreate", async interaction => {
 });
 
 // =========================
-// TINY WEB SERVER FOR RENDER
+// LITTLE WEB SERVER FOR RENDER
 // =========================
 
 const pingApp = express();
